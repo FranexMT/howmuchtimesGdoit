@@ -1,0 +1,21 @@
+{
+  "name": "howmuchtimesgdoit",
+  "version": "1.0.0",
+  "description": "repository entirely dedicated to finding out how much and how many times G does it",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "chart.js": "^4.5.1",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "prisma": "^5.22.0",
+    "sqlite3": "^5.1.7"
+  }
+}

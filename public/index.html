@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>G - Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="app-locked">
+  <div class="background-layer"></div>
+
+  <section id="auth-gate" class="auth-gate" aria-label="Pantalla de acceso">
+    <div class="auth-card">
+      <p class="auth-kicker">ACCESO</p>
+      <h2>G Control</h2>
+      <p class="auth-subtitle">Acceso privado.</p>
+      <form id="auth-form" class="auth-form">
+        <input id="auth-password" type="password" maxlength="2" autocomplete="off" placeholder="Contrasena" />
+        <button type="submit" class="auth-btn">Entrar</button>
+      </form>
+      <p id="auth-error" class="auth-error" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <main class="container">
+    <header class="app-header panel">
+      <p class="kicker">MONITOR DIARIO</p>
+      <h1>G Control</h1>
+      <p class="subtitle">Registro rapido de pausas y comidas con vista de estadisticas.</p>
+    </header>
+
+    <section class="buttons-section panel">
+      <button id="bathroom-btn" class="action-btn bathroom">
+        <span class="icon-shell">
+          <span class="icon">🚽</span>
+        </span>
+        <span class="label">Bano</span>
+        <span id="bathroom-timer" class="timer">00:00</span>
+      </button>
+
+      <button id="food-btn" class="action-btn food">
+        <span class="icon-shell">
+          <span class="icon">🍽️</span>
+        </span>
+        <span class="label">Comida</span>
+        <span class="timer ghost">Registrar</span>
+      </button>
+    </section>
+
+    <section class="reveal-section">
+      <button id="toggle-stats-btn" class="reveal-btn" aria-expanded="false">
+        Ver estadisticas
+      </button>
+    </section>
+
+    <div id="food-modal" class="modal">
+      <div class="modal-content">
+        <h2>Registrar Comida</h2>
+        <input type="text" id="food-type" placeholder="Tipo de comida" />
+        <input type="number" id="food-price" placeholder="Precio estimado ($)" step="0.01" />
+        <div class="modal-buttons">
+          <button id="save-food" class="save-btn">Guardar</button>
+          <button id="cancel-food" class="cancel-btn">Cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <section id="stats-section" class="stats-section panel is-hidden">
+      <div class="tabs">
+        <button class="tab active" data-period="daily">Diario</button>
+        <button class="tab" data-period="weekly">Semanal</button>
+        <button class="tab" data-period="monthly">Mensual</button>
+      </div>
+
+      <div id="stats-content" class="stats-content">
+        <div class="stat-card summary">
+          <h3>Resumen</h3>
+          <div class="summary-grid">
+            <div class="summary-item">
+              <span class="summary-value" id="bathroom-count">0</span>
+              <span class="summary-label">Veces bano</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-value" id="bathroom-time">0m</span>
+              <span class="summary-label">Tiempo total</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-value" id="food-count">0</span>
+              <span class="summary-label">Comidas</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-value" id="food-total">$0</span>
+              <span class="summary-label">Gastado</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h3>Veces al bano</h3>
+          <canvas id="bathroomChart"></canvas>
+        </div>
+
+        <div class="chart-card">
+          <h3>Comidas registradas</h3>
+          <canvas id="foodChart"></canvas>
+        </div>
+
+        <div class="chart-card full-width">
+          <h3>Gasto en comida</h3>
+          <canvas id="expenseChart"></canvas>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

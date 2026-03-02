@@ -1,0 +1,21 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model BathroomLog {
+  id              Int      @id @default(autoincrement())
+  timestamp       DateTime @default(now())
+  durationSeconds Int
+}
+
+model FoodLog {
+  id             Int      @id @default(autoincrement())
+  timestamp      DateTime @default(now())
+  foodType       String
+  estimatedPrice Float
+}
