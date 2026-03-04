@@ -8,6 +8,9 @@ let currentPeriod = 'daily';
 let bathroomChart, bathroomTimeChart, bathroomVisitChart, foodChart, expenseChart, salidaChart, salidaTimeChart;
 let appStarted = false;
 
+const ACTIVE_TIMER_KEY = 'gcontrol_active_timer';
+const MAX_TIMER_AGE_MS = 24 * 60 * 60 * 1000; // 24 horas
+
 const chartColors = {
   violet: 'rgba(166, 125, 255, 0.95)',
   violetBg: 'rgba(166, 125, 255, 0.24)',
@@ -25,6 +28,64 @@ function normalizeString(value) {
     .replace(/[\u0300-\u036f]/g, '')
     .trim()
     .toLowerCase();
+}
+
+function saveActiveTimerToStorage(type, startTime) {
+  localStorage.setItem(ACTIVE_TIMER_KEY, JSON.stringify({ type, startTime }));
+}
+
+function clearActiveTimerFromStorage() {
+  localStorage.removeItem(ACTIVE_TIMER_KEY);
+}
+
+function getActiveTimerFromStorage() {
+  const data = localStorage.getItem(ACTIVE_TIMER_KEY);
+  if (!data) return null;
+  try {
+    return JSON.parse(data);
+  } catch (e) {
+    console.error('Error parsing active timer:', e);
+    return null;
+  }
+}
+
+function restoreActiveTimer() {
+  const saved = getActiveTimerFromStorage();
+  if (!saved) return;
+
+  const now = Date.now();
+  if (now - saved.startTime > MAX_TIMER_AGE_MS) {
+    clearActiveTimerFromStorage();
+    return;
+  }
+
+  if (saved.type === 'bathroom') {
+    bathroomStartTime = saved.startTime;
+    document.getElementById('bathroom-btn').classList.add('active');
+    bathroomInterval = setInterval(updateBathroomTimer, 1000);
+    updateBathroomTimer();
+  } else if (saved.type === 'salida') {
+    salidaStartTime = saved.startTime;
+    document.getElementById('salida-btn').classList.add('active');
+    salidaInterval = setInterval(updateSalidaTimer, 1000);
+    updateSalidaTimer();
+  }
+}
+
+function updateBathroomTimer() {
+  if (!bathroomStartTime) return;
+  const elapsed = Math.floor((Date.now() - bathroomStartTime) / 1000);
+  const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
+  const secs = (elapsed % 60).toString().padStart(2, '0');
+  document.getElementById('bathroom-timer').textContent = `${mins}:${secs}`;
+}
+
+function updateSalidaTimer() {
+  if (!salidaStartTime) return;
+  const elapsed = Math.floor((Date.now() - salidaStartTime) / 1000);
+  const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
+  const secs = (elapsed % 60).toString().padStart(2, '0');
+  document.getElementById('salida-timer').textContent = `${mins}:${secs}`;
 }
 
 function initCharts() {
@@ -170,6 +231,7 @@ function startApp() {
   }
 
   initCharts();
+  restoreActiveTimer();
   loadStats();
   updateCharts(currentPeriod);
   appStarted = true;
@@ -312,20 +374,25 @@ function toggleBathroom() {
 
   if (bathroomStartTime) {
     clearInterval(bathroomInterval);
+    clearActiveTimerFromStorage();
     const duration = Math.floor((Date.now() - bathroomStartTime) / 1000);
     saveBathroom(duration);
     bathroomStartTime = null;
     btn.classList.remove('active');
     timer.textContent = '00:00';
   } else {
+    if (salidaStartTime) {
+      clearInterval(salidaInterval);
+      salidaStartTime = null;
+      document.getElementById('salida-btn').classList.remove('active');
+      document.getElementById('salida-timer').textContent = '00:00';
+      clearActiveTimerFromStorage();
+    }
     bathroomStartTime = Date.now();
+    saveActiveTimerToStorage('bathroom', bathroomStartTime);
     btn.classList.add('active');
-    bathroomInterval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - bathroomStartTime) / 1000);
-      const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
-      const secs = (elapsed % 60).toString().padStart(2, '0');
-      timer.textContent = `${mins}:${secs}`;
-    }, 1000);
+    bathroomInterval = setInterval(updateBathroomTimer, 1000);
+    updateBathroomTimer();
   }
 }
 
@@ -351,20 +418,25 @@ function toggleSalida() {
 
   if (salidaStartTime) {
     clearInterval(salidaInterval);
+    clearActiveTimerFromStorage();
     const duration = Math.floor((Date.now() - salidaStartTime) / 1000);
     saveSalida(duration);
     salidaStartTime = null;
     btn.classList.remove('active');
     timer.textContent = '00:00';
   } else {
+    if (bathroomStartTime) {
+      clearInterval(bathroomInterval);
+      bathroomStartTime = null;
+      document.getElementById('bathroom-btn').classList.remove('active');
+      document.getElementById('bathroom-timer').textContent = '00:00';
+      clearActiveTimerFromStorage();
+    }
     salidaStartTime = Date.now();
+    saveActiveTimerToStorage('salida', salidaStartTime);
     btn.classList.add('active');
-    salidaInterval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - salidaStartTime) / 1000);
-      const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
-      const secs = (elapsed % 60).toString().padStart(2, '0');
-      timer.textContent = `${mins}:${secs}`;
-    }, 1000);
+    salidaInterval = setInterval(updateSalidaTimer, 1000);
+    updateSalidaTimer();
   }
 }
 
