@@ -38,6 +38,7 @@
           <span class="icon">🚽</span>
         </span>
         <span class="label">Baño</span>
+        <span class="mini-stats" id="bathroom-mini">0 hoy</span>
         <span id="bathroom-timer" class="timer">00:00</span>
       </button>
 
@@ -46,6 +47,7 @@
           <span class="icon">🍽️</span>
         </span>
         <span class="label">Comida</span>
+        <span class="mini-stats" id="food-mini">0 hoy</span>
         <span class="timer ghost">Registrar</span>
       </button>
 
@@ -54,6 +56,7 @@
           <span class="icon">🚪</span>
         </span>
         <span class="label">Salida</span>
+        <span class="mini-stats" id="salida-mini">0 hoy</span>
         <span id="salida-timer" class="timer">00:00</span>
       </button>
     </section>
@@ -155,82 +158,106 @@
           <h3>Resumen</h3>
           <div class="summary-grid">
             <div class="summary-item">
-              <span class="summary-value" id="bathroom-count">0</span>
-              <span class="summary-label">Veces baño</span>
+              <span class="summary-value skeleton-text" id="bathroom-count">0</span>
+              <span class="summary-label skeleton-text">Veces baño</span>
             </div>
             <div class="summary-item">
-              <span class="summary-value" id="bathroom-time">0m</span>
-              <span class="summary-label">Tiempo baño</span>
+              <span class="summary-value skeleton-text" id="bathroom-time">0m</span>
+              <span class="summary-label skeleton-text">Tiempo baño</span>
             </div>
             <div class="summary-item">
-              <span class="summary-value" id="food-count">0</span>
-              <span class="summary-label">Comidas</span>
+              <span class="summary-value skeleton-text" id="food-count">0</span>
+              <span class="summary-label skeleton-text">Comidas</span>
             </div>
             <div class="summary-item">
-              <span class="summary-value" id="food-total">$0</span>
-              <span class="summary-label">Gastado</span>
+              <span class="summary-value skeleton-text" id="food-total">$0</span>
+              <span class="summary-label skeleton-text">Gastado</span>
             </div>
             <div class="summary-item">
-              <span class="summary-value" id="salida-count">0</span>
-              <span class="summary-label">Salidas</span>
+              <span class="summary-value skeleton-text" id="salida-count">0</span>
+              <span class="summary-label skeleton-text">Salidas</span>
             </div>
             <div class="summary-item">
-              <span class="summary-value" id="salida-time">0m</span>
-              <span class="summary-label">Tiempo salida</span>
+              <span class="summary-value skeleton-text" id="salida-time">0m</span>
+              <span class="summary-label skeleton-text">Tiempo salida</span>
             </div>
             <div class="summary-item">
-              <span class="summary-value" id="bathroom-avg">0m</span>
-              <span class="summary-label">Promedio baño</span>
+              <span class="summary-value skeleton-text" id="bathroom-avg">0m</span>
+              <span class="summary-label skeleton-text">Promedio baño</span>
             </div>
             <div class="summary-item">
-              <span class="summary-value" id="salida-avg">0m</span>
-              <span class="summary-label">Promedio salida</span>
+              <span class="summary-value skeleton-text" id="salida-avg">0m</span>
+              <span class="summary-label skeleton-text">Promedio salida</span>
             </div>
           </div>
         </div>
 
         <div class="chart-card">
-          <h3>Veces al baño</h3>
-          <canvas id="bathroomChart"></canvas>
+          <h3 class="skeleton-text">Veces al baño</h3>
+          <canvas id="bathroomChart" class="skeleton"></canvas>
         </div>
 
         <div class="chart-card">
-          <h3>Tiempo en baño (min)</h3>
-          <canvas id="bathroomTimeChart"></canvas>
+          <h3 class="skeleton-text">Tiempo en baño (min)</h3>
+          <canvas id="bathroomTimeChart" class="skeleton"></canvas>
         </div>
 
         <div class="chart-card">
-          <h3>Tiempo por cada visita (min)</h3>
-          <canvas id="bathroomVisitChart"></canvas>
+          <h3 class="skeleton-text">Tiempo por cada visita (min)</h3>
+          <canvas id="bathroomVisitChart" class="skeleton"></canvas>
         </div>
 
         <div class="chart-card">
-          <h3>Comidas registradas</h3>
-          <canvas id="foodChart"></canvas>
+          <h3 class="skeleton-text">Comidas registradas</h3>
+          <canvas id="foodChart" class="skeleton"></canvas>
         </div>
 
         <div class="chart-card full-width">
-          <h3>Gasto en comida</h3>
-          <canvas id="expenseChart"></canvas>
+          <h3 class="skeleton-text">Gasto en comida</h3>
+          <canvas id="expenseChart" class="skeleton"></canvas>
         </div>
 
         <div class="chart-card">
-          <h3>Veces de salida</h3>
-          <canvas id="salidaChart"></canvas>
+          <h3 class="skeleton-text">Veces de salida</h3>
+          <canvas id="salidaChart" class="skeleton"></canvas>
         </div>
 
         <div class="chart-card">
-          <h3>Tiempo en salida (min)</h3>
-          <canvas id="salidaTimeChart"></canvas>
+          <h3 class="skeleton-text">Tiempo en salida (min)</h3>
+          <canvas id="salidaTimeChart" class="skeleton"></canvas>
         </div>
 
         <div class="stat-card full-width">
-          <h3>Detalle de registros</h3>
-          <div id="stats-details" class="stats-details"></div>
+          <h3 class="skeleton-text">Detalle de registros</h3>
+          <div id="stats-details" class="stats-details skeleton">
+            <div class="skeleton-text" style="height: 40px; margin-bottom: 8px;"></div>
+            <div class="skeleton-text" style="height: 40px; margin-bottom: 8px;"></div>
+            <div class="skeleton-text" style="height: 40px; margin-bottom: 8px;"></div>
+          </div>
         </div>
       </div>
     </section>
   </main>
+
+  <!-- Bottom Navigation (mobile) -->
+  <nav class="bottom-nav">
+    <button id="bottom-home" class="bottom-nav-item active">
+      <span class="bottom-icon">🏠</span>
+      <span class="bottom-label">Inicio</span>
+    </button>
+    <button id="bottom-stats" class="bottom-nav-item">
+      <span class="bottom-icon">📊</span>
+      <span class="bottom-label">Stats</span>
+    </button>
+    <button id="bottom-records" class="bottom-nav-item">
+      <span class="bottom-icon">📜</span>
+      <span class="bottom-label">Registros</span>
+    </button>
+    <button id="bottom-inject" class="bottom-nav-item">
+      <span class="bottom-icon">➕</span>
+      <span class="bottom-label">Injectar</span>
+    </button>
+  </nav>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="app.js"></script>

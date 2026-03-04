@@ -283,11 +283,12 @@ function startApp() {
   if (appStarted) {
     return;
   }
-
+  
   initCharts();
   restoreActiveTimer();
   loadStats();
   updateCharts(currentPeriod);
+  updateMiniStats(); // Actualizar mini stats
   appStarted = true;
 }
 
@@ -366,8 +367,23 @@ async function setupAuthGate() {
 }
 
 async function updateCharts(period) {
+  const skeletonCanvasIds = ['bathroomChart','bathroomTimeChart','foodChart','expenseChart','salidaChart','salidaTimeChart'];
+  
+  // Show skeleton on all chart canvases
+  skeletonCanvasIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('skeleton');
+  });
+  
   try {
     const data = await apiFetchJson(`${API_URL}/api/chart/${period}`);
+    
+    // Remove skeleton before updating
+    skeletonCanvasIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('skeleton');
+    });
+
     bathroomChart.data.labels = data.labels;
     bathroomChart.data.datasets[0].data = data.bathroomChart;
     bathroomChart.update();
@@ -411,6 +427,26 @@ document.getElementById('save-inject').addEventListener('click', saveInjectedRec
 document.getElementById('cancel-edit').addEventListener('click', closeEditModal);
 document.getElementById('save-edit').addEventListener('click', saveEditedRecord);
 document.getElementById('inject-type').addEventListener('change', toggleInjectFields);
+
+// Bottom navigation handlers
+document.getElementById('bottom-home').addEventListener('click', () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+document.getElementById('bottom-stats').addEventListener('click', () => {
+  const section = document.getElementById('stats-section');
+  if (section.classList.contains('is-hidden')) {
+    toggleStatsSection();
+  }
+  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+document.getElementById('bottom-records').addEventListener('click', () => {
+  const section = document.getElementById('records-section');
+  if (section.classList.contains('is-hidden')) {
+    toggleRecordsSection();
+  }
+  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+document.getElementById('bottom-inject').addEventListener('click', openInjectModal);
 
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
@@ -459,6 +495,7 @@ async function saveBathroom(duration) {
     });
     loadStats();
     updateCharts(currentPeriod);
+    updateMiniStats(); // Actualizar mini stats
     showToast('Baño registrado', 'success');
   } catch (error) {
     if (error.message !== 'unauthorized') {
@@ -505,6 +542,7 @@ async function saveSalida(duration) {
     });
     loadStats();
     updateCharts(currentPeriod);
+    updateMiniStats(); // Actualizar mini stats
     showToast('Salida registrada', 'success');
   } catch (error) {
     if (error.message !== 'unauthorized') {
@@ -546,6 +584,7 @@ async function saveFood() {
     closeFoodModal();
     loadStats();
     updateCharts(currentPeriod);
+    updateMiniStats(); // Actualizar mini stats
     showToast('Comida registrada', 'success');
   } catch (error) {
     if (error.message !== 'unauthorized') {
@@ -556,8 +595,28 @@ async function saveFood() {
 }
 
 async function loadStats() {
+  const skeletonIds = [
+    'bathroom-count','bathroom-time','food-count','food-total','salida-count','salida-time','bathroom-avg','salida-avg',
+    'bathroomChart','bathroomTimeChart','bathroomVisitChart','foodChart','expenseChart','salidaChart','salidaTimeChart'
+  ];
+  
+  // Show skeleton
+  skeletonIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('skeleton');
+  });
+  document.getElementById('stats-details').classList.add('skeleton');
+
   try {
     const data = await apiFetchJson(`${API_URL}/api/stats/${currentPeriod}`);
+    
+    // Remove skeleton before updating content
+    skeletonIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('skeleton');
+    });
+    document.getElementById('stats-details').classList.remove('skeleton');
+
     document.getElementById('bathroom-count').textContent = data.bathroom.bathroom_count || 0;
 
     const totalSeconds = data.bathroom.bathroom_total_time || 0;
@@ -663,6 +722,35 @@ function updateBathroomVisitChart(records) {
   bathroomVisitChart.data.labels = labels;
   bathroomVisitChart.data.datasets[0].data = values;
   bathroomVisitChart.update();
+}
+
+function updateMiniStats() {
+  // Obtener fecha de hoy (YYYY-MM-DD)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  Promise.all([
+    apiFetchJson(`${API_URL}/api/stats/daily`),
+    apiFetchJson(`${API_URL}/api/bathroom/recent`),
+    apiFetchJson(`${API_URL}/api/food/recent`),
+    apiFetchJson(`${API_URL}/api/salida/recent`)
+  ]).then(([stats, bathroomRecords, foodRecords, salidaRecords]) => {
+    // Actualizar baño: uso daily count
+    const bathroomTodayCount = stats.bathroom.bathroom_count || 0;
+    document.getElementById('bathroom-mini').textContent = `${bathroomTodayCount} hoy`;
+    
+    // Actualizar comida: uso daily count
+    const foodTodayCount = stats.food.food_count || 0;
+    document.getElementById('food-mini').textContent = `${foodTodayCount} hoy`;
+    
+    // Actualizar salida: uso daily count
+    const salidaTodayCount = stats.salida?.salida_count || 0;
+    document.getElementById('salida-mini').textContent = `${salidaTodayCount} hoy`;
+  }).catch(error => {
+    if (error.message !== 'unauthorized') {
+      console.error('Error updating mini stats:', error);
+    }
+  });
 }
 
 function toggleStatsSection() {
@@ -961,6 +1049,7 @@ async function saveInjectedRecord() {
     loadRecords();
     loadStats();
     updateCharts(currentPeriod);
+    updateMiniStats(); // Actualizar mini stats
     showToast('Registro inyectado correctamente', 'success');
   } catch (error) {
     console.error('Error saving inject:', error);

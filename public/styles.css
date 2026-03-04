@@ -24,6 +24,8 @@ html {
   --pink: #ff8ac7;
   --mint: #7ff3cb;
   --shadow: 0 24px 58px rgba(4, 2, 10, 0.62);
+  --skeleton-base: rgba(166, 125, 255, 0.1);
+  --skeleton-highlight: rgba(166, 125, 255, 0.25);
 }
 
 body {
@@ -218,6 +220,13 @@ body {
   text-transform: uppercase;
   letter-spacing: 1.2px;
   font-size: 0.86rem;
+}
+
+.action-btn .mini-stats {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: -0.3rem;
 }
 
 .action-btn .timer {
@@ -773,7 +782,51 @@ body {
 
   .subtitle {
     font-size: 0.9rem;
+   }
+ }
+
+/* Skeleton loading states */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--skeleton-base) 25%,
+    var(--skeleton-highlight) 50%,
+    var(--skeleton-base) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite ease-in-out;
+  border-radius: 8px;
+  color: transparent !important;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
   }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton-text {
+  height: 1em;
+  margin-bottom: 0.5em;
+  border-radius: 4px;
+}
+
+.skeleton-text:last-child {
+  margin-bottom: 0;
+}
+
+.skeleton-circle {
+  border-radius: 50%;
+}
+
+.skeleton-card {
+  border: 1px solid rgba(164, 126, 255, 0.27);
+  border-radius: 16px;
+  padding: 0.85rem;
+  background: rgba(16, 8, 31, 0.8);
 }
 
 /* Toast notifications */
@@ -809,4 +862,71 @@ body {
 
 .toast.fade-out {
   opacity: 0;
+}
+
+/* Bottom Navigation (mobile) */
+.bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(8, 5, 17, 0.95);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(164, 126, 255, 0.3);
+  padding: 0.5rem 0;
+  z-index: 1000;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.bottom-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.4rem 0.5rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  gap: 0.1rem;
+}
+
+.bottom-nav-item .bottom-icon {
+  font-size: 1.1rem;
+  margin-bottom: 0.1rem;
+}
+
+.bottom-nav-item .bottom-label {
+  font-size: 0.65rem;
+}
+
+.bottom-nav-item:hover,
+.bottom-nav-item.active {
+  color: var(--violet-soft);
+}
+
+.bottom-nav-item.active {
+  color: var(--mint);
+}
+
+/* Responsive bottom nav */
+@media (max-width: 480px) {
+  .bottom-nav {
+    display: flex;
+  }
+  
+  /* Adjust main content to not overlap bottom nav */
+  main {
+    padding-bottom: 60px;
+  }
+  
+  /* Hide desktop tabs and reveal buttons on mobile */
+  .tabs,
+  .reveal-section {
+    display: none;
+  }
 }
