@@ -1,18 +1,21 @@
+const crypto = require('crypto');
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
-const crypto = require('crypto');
 const { PrismaClient } = require('@prisma/client');
 
 const app = express();
-const PORT = process.env.PORT || 3009;
-const HOST = process.env.HOST || '0.0.0.0';
 const prisma = new PrismaClient();
+
+const PORT = Number(process.env.PORT || 3009);
+const HOST = process.env.HOST || '0.0.0.0';
 const SESSION_COOKIE = 'gcontrol_session';
 const sessions = new Map();
+const RECENT_LIMIT = 30;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
 function normalizeString(value = '') {
   return value
@@ -81,6 +84,50 @@ function getValidSession(req) {
   return { token, session };
 }
 
+function getPeriodStart(period) {
+  const now = new Date();
+  if (period === 'daily') {
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    return start;
+  }
+  if (period === 'weekly') {
+    const start = new Date(now);
+    start.setDate(start.getDate() - 7);
+    start.setHours(0, 0, 0, 0);
+    return start;
+  }
+
+  const start = new Date(now);
+  start.setDate(start.getDate() - 30);
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
+function toDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function mapBathroomRecord(record) {
+  return {
+    id: record.id,
+    timestamp: record.timestamp,
+    duration_seconds: record.durationSeconds
+  };
+}
+
+function mapFoodRecord(record) {
+  return {
+    id: record.id,
+    timestamp: record.timestamp,
+    food_type: record.foodType,
+    estimated_price: record.estimatedPrice
+  };
+}
+
 app.post('/api/auth/login', (req, res) => {
   const { password } = req.body || {};
   const attempt = normalizeString(password).charAt(0);
@@ -130,220 +177,278 @@ app.use('/api', (req, res, next) => {
 
 app.post('/api/bathroom', async (req, res) => {
   try {
-    const { duration_seconds } = req.body;
+    const rawDuration = req.body?.duration_seconds;
+    const duration = Number(rawDuration);
+
+    if (!Number.isFinite(duration) || duration < 0) {
+      return res.status(400).json({ error: 'invalid_duration_seconds' });
+    }
+
     const result = await prisma.bathroomLog.create({
-      data: { durationSeconds: duration_seconds }
+      data: { durationSeconds: Math.floor(duration) }
     });
-    res.json({ id: result.id, duration_seconds: result.durationSeconds });
+
+    return res.json(mapBathroomRecord(result));
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 });
 
 app.post('/api/food', async (req, res) => {
   try {
-    const { food_type, estimated_price } = req.body;
+    const foodType = String(req.body?.food_type || '').trim();
+    const estimatedPrice = Number(req.body?.estimated_price || 0);
+
+    if (!foodType) {
+      return res.status(400).json({ error: 'invalid_food_type' });
+    }
+    if (!Number.isFinite(estimatedPrice) || estimatedPrice < 0) {
+      return res.status(400).json({ error: 'invalid_estimated_price' });
+    }
+
     const result = await prisma.foodLog.create({
-      data: { 
-        foodType: food_type, 
-        estimatedPrice: estimated_price 
+      data: {
+        foodType,
+        estimatedPrice
       }
     });
-    res.json({ 
-      id: result.id, 
-      food_type: result.foodType, 
-      estimated_price: result.estimatedPrice 
-    });
+
+    return res.json(mapFoodRecord(result));
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/bathroom/recent', async (_req, res) => {
+  try {
+    const rows = await prisma.bathroomLog.findMany({
+      orderBy: { timestamp: 'desc' },
+      take: RECENT_LIMIT
+    });
+    return res.json(rows.map(mapBathroomRecord));
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/food/recent', async (_req, res) => {
+  try {
+    const rows = await prisma.foodLog.findMany({
+      orderBy: { timestamp: 'desc' },
+      take: RECENT_LIMIT
+    });
+    return res.json(rows.map(mapFoodRecord));
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 });
 
 app.delete('/api/bathroom/:id', async (req, res) => {
   try {
-    await prisma.bathroomLog.delete({
-      where: { id: parseInt(req.params.id) }
-    });
-    res.json({ success: true });
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'invalid_id' });
+    }
+    await prisma.bathroomLog.delete({ where: { id } });
+    return res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'record_not_found' });
+    }
+    return res.status(500).json({ error: error.message });
   }
 });
 
 app.delete('/api/food/:id', async (req, res) => {
   try {
-    await prisma.foodLog.delete({
-      where: { id: parseInt(req.params.id) }
-    });
-    res.json({ success: true });
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'invalid_id' });
+    }
+    await prisma.foodLog.delete({ where: { id } });
+    return res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'record_not_found' });
+    }
+    return res.status(500).json({ error: error.message });
   }
 });
 
-app.get('/api/stats/daily', async (req, res) => {
+app.get('/api/stats/:period', async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const bathroom = await prisma.bathroomLog.aggregate({
-      where: { timestamp: { gte: today } },
-      _count: { id: true },
-      _sum: { durationSeconds: true }
-    });
+    const period = req.params.period;
+    if (!['daily', 'weekly', 'monthly'].includes(period)) {
+      return res.status(400).json({ error: 'invalid_period' });
+    }
 
-    const food = await prisma.foodLog.aggregate({
-      where: { timestamp: { gte: today } },
-      _count: { id: true },
-      _sum: { estimatedPrice: true }
-    });
+    const start = getPeriodStart(period);
+    const [bathroomAggregate, foodAggregate, bathroomDetailsRows, foodDetailsRows] = await Promise.all([
+      prisma.bathroomLog.aggregate({
+        where: { timestamp: { gte: start } },
+        _count: { id: true },
+        _sum: { durationSeconds: true }
+      }),
+      prisma.foodLog.aggregate({
+        where: { timestamp: { gte: start } },
+        _count: { id: true },
+        _sum: { estimatedPrice: true }
+      }),
+      prisma.bathroomLog.findMany({
+        where: { timestamp: { gte: start } },
+        orderBy: { timestamp: 'desc' }
+      }),
+      prisma.foodLog.findMany({
+        where: { timestamp: { gte: start } },
+        orderBy: { timestamp: 'desc' }
+      })
+    ]);
 
-    res.json({
+    return res.json({
       bathroom: {
-        bathroom_count: bathroom._count.id,
-        bathroom_total_time: bathroom._sum.durationSeconds || 0
+        bathroom_count: bathroomAggregate._count.id,
+        bathroom_total_time: bathroomAggregate._sum.durationSeconds || 0
       },
       food: {
-        food_count: food._count.id,
-        food_total_price: food._sum.estimatedPrice || 0
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.get('/api/stats/weekly', async (req, res) => {
-  try {
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    
-    const bathroom = await prisma.bathroomLog.aggregate({
-      where: { timestamp: { gte: weekAgo } },
-      _count: { id: true },
-      _sum: { durationSeconds: true }
-    });
-
-    const food = await prisma.foodLog.aggregate({
-      where: { timestamp: { gte: weekAgo } },
-      _count: { id: true },
-      _sum: { estimatedPrice: true }
-    });
-
-    res.json({
-      bathroom: {
-        bathroom_count: bathroom._count.id,
-        bathroom_total_time: bathroom._sum.durationSeconds || 0
+        food_count: foodAggregate._count.id,
+        food_total_price: foodAggregate._sum.estimatedPrice || 0
       },
-      food: {
-        food_count: food._count.id,
-        food_total_price: food._sum.estimatedPrice || 0
-      }
+      bathroom_details: bathroomDetailsRows.map(mapBathroomRecord),
+      food_details: foodDetailsRows.map(mapFoodRecord)
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.get('/api/stats/monthly', async (req, res) => {
-  try {
-    const monthAgo = new Date();
-    monthAgo.setDate(monthAgo.getDate() - 30);
-    
-    const bathroom = await prisma.bathroomLog.aggregate({
-      where: { timestamp: { gte: monthAgo } },
-      _count: { id: true },
-      _sum: { durationSeconds: true }
-    });
-
-    const food = await prisma.foodLog.aggregate({
-      where: { timestamp: { gte: monthAgo } },
-      _count: { id: true },
-      _sum: { estimatedPrice: true }
-    });
-
-    res.json({
-      bathroom: {
-        bathroom_count: bathroom._count.id,
-        bathroom_total_time: bathroom._sum.durationSeconds || 0
-      },
-      food: {
-        food_count: food._count.id,
-        food_total_price: food._sum.estimatedPrice || 0
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 });
 
 app.get('/api/chart/:period', async (req, res) => {
   try {
-    const { period } = req.params;
-    const days = period === 'daily' ? 7 : period === 'weekly' ? 7 : 30;
+    const period = req.params.period;
+    if (!['daily', 'weekly', 'monthly'].includes(period)) {
+      return res.status(400).json({ error: 'invalid_period' });
+    }
+
+    const days = period === 'monthly' ? 30 : 7;
     const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
     startDate.setHours(0, 0, 0, 0);
+    startDate.setDate(startDate.getDate() - (days - 1));
 
-    const bathroomLogs = await prisma.bathroomLog.findMany({
-      where: { timestamp: { gte: startDate } },
-      orderBy: { timestamp: 'asc' }
-    });
+    const [bathroomLogs, foodLogs] = await Promise.all([
+      prisma.bathroomLog.findMany({
+        where: { timestamp: { gte: startDate } },
+        orderBy: { timestamp: 'asc' }
+      }),
+      prisma.foodLog.findMany({
+        where: { timestamp: { gte: startDate } },
+        orderBy: { timestamp: 'asc' }
+      })
+    ]);
 
-    const foodLogs = await prisma.foodLog.findMany({
-      where: { timestamp: { gte: startDate } },
-      orderBy: { timestamp: 'asc' }
-    });
-
+    const labels = [];
     const bathroomByDay = {};
+    const bathroomTimeByDay = {};
     const foodByDay = {};
     const expenseByDay = {};
 
-    for (let i = 0; i < days; i++) {
+    for (let i = 0; i < days; i += 1) {
       const date = new Date(startDate);
       date.setDate(date.getDate() + i);
-      const key = date.toISOString().split('T')[0];
+      const key = toDateKey(date);
+      labels.push(
+        period === 'monthly'
+          ? `${date.getDate()}`
+          : ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'][date.getDay()]
+      );
       bathroomByDay[key] = 0;
+      bathroomTimeByDay[key] = 0;
       foodByDay[key] = 0;
       expenseByDay[key] = 0;
     }
 
-    bathroomLogs.forEach(log => {
-      const key = log.timestamp.toISOString().split('T')[0];
-      if (bathroomByDay[key] !== undefined) {
-        bathroomByDay[key]++;
+    bathroomLogs.forEach((log) => {
+      const key = toDateKey(log.timestamp);
+      if (Object.prototype.hasOwnProperty.call(bathroomByDay, key)) {
+        bathroomByDay[key] += 1;
+        bathroomTimeByDay[key] += log.durationSeconds / 60;
       }
     });
 
-    foodLogs.forEach(log => {
-      const key = log.timestamp.toISOString().split('T')[0];
-      if (foodByDay[key] !== undefined) {
-        foodByDay[key]++;
+    foodLogs.forEach((log) => {
+      const key = toDateKey(log.timestamp);
+      if (Object.prototype.hasOwnProperty.call(foodByDay, key)) {
+        foodByDay[key] += 1;
         expenseByDay[key] += log.estimatedPrice;
       }
     });
 
-    const labels = Object.keys(bathroomByDay).map(date => {
-      const d = new Date(date);
-      return period === 'monthly' ? (d.getMonth() + 1) : 
-        ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][d.getDay()];
-    });
-
-    res.json({
+    return res.json({
+      labels,
       bathroomChart: Object.values(bathroomByDay),
+      bathroomTimeChart: Object.values(bathroomTimeByDay).map((m) => Number(m.toFixed(2))),
       foodChart: Object.values(foodByDay),
-      expenseChart: Object.values(expenseByDay),
-      labels
+      expenseChart: Object.values(expenseByDay).map((v) => Number(v.toFixed(2)))
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 });
 
-app.listen(PORT, HOST, async () => {
-  console.log(`Server running on http://${HOST}:${PORT}`);
+app.get('/health', (_req, res) => {
+  res.json({ ok: true });
 });
 
-process.on('beforeExit', async () => {
+let httpServer = null;
+
+function startServer(options = {}) {
+  const host = options.host || HOST;
+  const port = Number(options.port || PORT);
+
+  return new Promise((resolve, reject) => {
+    httpServer = app.listen(port, host, () => {
+      console.log(`Server running on http://${host}:${port}`);
+      resolve(httpServer);
+    });
+
+    httpServer.on('error', reject);
+  });
+}
+
+async function stopServer() {
+  if (httpServer) {
+    await new Promise((resolve, reject) => {
+      httpServer.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve();
+      });
+    });
+    httpServer = null;
+  }
   await prisma.$disconnect();
-});
+}
+
+if (require.main === module) {
+  startServer().catch(async (error) => {
+    console.error(error);
+    await prisma.$disconnect();
+    process.exit(1);
+  });
+
+  process.on('SIGINT', async () => {
+    await stopServer();
+    process.exit(0);
+  });
+
+  process.on('SIGTERM', async () => {
+    await stopServer();
+    process.exit(0);
+  });
+}
+
+module.exports = {
+  app,
+  startServer,
+  stopServer
+};

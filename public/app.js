@@ -3,7 +3,7 @@ const API_URL = window.location.origin;
 let bathroomStartTime = null;
 let bathroomInterval = null;
 let currentPeriod = 'daily';
-let bathroomChart, foodChart, expenseChart;
+let bathroomChart, bathroomTimeChart, bathroomVisitChart, foodChart, expenseChart;
 let appStarted = false;
 
 const chartColors = {
@@ -56,6 +56,40 @@ function initCharts() {
         borderWidth: 2,
         borderRadius: 6,
         borderSkipped: false
+      }]
+    },
+    options: commonOptions
+  });
+
+  bathroomTimeChart = new Chart(document.getElementById('bathroomTimeChart'), {
+    type: 'bar',
+    data: {
+      labels: [],
+      datasets: [{
+        data: [],
+        backgroundColor: chartColors.mintBg,
+        borderColor: chartColors.mint,
+        borderWidth: 2,
+        borderRadius: 6,
+        borderSkipped: false
+      }]
+    },
+    options: commonOptions
+  });
+
+  bathroomVisitChart = new Chart(document.getElementById('bathroomVisitChart'), {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        data: [],
+        borderColor: chartColors.violet,
+        backgroundColor: chartColors.violetBg,
+        borderWidth: 2,
+        fill: false,
+        tension: 0.25,
+        pointRadius: 4,
+        pointBackgroundColor: chartColors.violet
       }]
     },
     options: commonOptions
@@ -141,7 +175,7 @@ async function handleAuthSubmit(event) {
   const attempt = normalizeString(passwordInput.value).charAt(0);
 
   if (!attempt) {
-    errorNode.textContent = 'Contrasena incorrecta.';
+    errorNode.textContent = 'Contraseña incorrecta.';
     passwordInput.value = '';
     passwordInput.focus();
     return;
@@ -156,7 +190,7 @@ async function handleAuthSubmit(event) {
     errorNode.textContent = '';
     unlockApp();
   } catch (error) {
-    errorNode.textContent = 'Contrasena incorrecta.';
+    errorNode.textContent = 'Contraseña incorrecta.';
     passwordInput.value = '';
     passwordInput.focus();
   }
@@ -188,6 +222,10 @@ async function updateCharts(period) {
     bathroomChart.data.datasets[0].data = data.bathroomChart;
     bathroomChart.update();
 
+    bathroomTimeChart.data.labels = data.labels;
+    bathroomTimeChart.data.datasets[0].data = data.bathroomTimeChart || [];
+    bathroomTimeChart.update();
+
     foodChart.data.labels = data.labels;
     foodChart.data.datasets[0].data = data.foodChart;
     foodChart.update();
@@ -207,6 +245,7 @@ document.getElementById('food-btn').addEventListener('click', openFoodModal);
 document.getElementById('save-food').addEventListener('click', saveFood);
 document.getElementById('cancel-food').addEventListener('click', closeFoodModal);
 document.getElementById('toggle-stats-btn').addEventListener('click', toggleStatsSection);
+document.getElementById('toggle-records-btn').addEventListener('click', toggleRecordsSection);
 
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
@@ -310,6 +349,49 @@ async function loadStats() {
     document.getElementById('food-count').textContent = data.food.food_count || 0;
     document.getElementById('food-total').textContent =
       `$${(data.food.food_total_price || 0).toFixed(2)}`;
+    updateBathroomVisitChart(data.bathroom_details || []);
+
+    const detailsContainer = document.getElementById('stats-details');
+    const formatTime = (ts) => {
+      const d = new Date(ts);
+      return d.toLocaleString('es-ES', { 
+        day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' 
+      });
+    };
+
+    const formatDuration = (secs) => {
+      const m = Math.floor(secs / 60);
+      const s = secs % 60;
+      return `${m}m ${s}s`;
+    };
+
+    const allRecords = [
+      ...(data.bathroom_details || []).map(r => ({ 
+        type: 'bathroom', 
+        label: `Baño (${formatDuration(r.duration_seconds)})`,
+        time: formatTime(r.timestamp),
+        sortKey: new Date(r.timestamp).getTime()
+      })),
+      ...(data.food_details || []).map(r => ({ 
+        type: 'food', 
+        label: `${r.food_type} ($${r.estimated_price})`,
+        time: formatTime(r.timestamp),
+        sortKey: new Date(r.timestamp).getTime()
+      }))
+    ].sort((a, b) => b.sortKey - a.sortKey);
+
+    if (allRecords.length === 0) {
+      detailsContainer.innerHTML = '<p class="no-records">No hay registros en este periodo.</p>';
+      return;
+    }
+
+    detailsContainer.innerHTML = allRecords.map(r => `
+      <div class="detail-item">
+        <span class="detail-icon">${r.type === 'bathroom' ? '🚽' : '🍽️'}</span>
+        <span class="detail-label">${r.label}</span>
+        <span class="detail-time">${r.time}</span>
+      </div>
+    `).join('');
   } catch (error) {
     if (error.message !== 'unauthorized') {
       console.error('Error:', error);
@@ -317,16 +399,118 @@ async function loadStats() {
   }
 }
 
+function updateBathroomVisitChart(records) {
+  const sorted = [...records].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  const labels = sorted.map((record, index) => {
+    const d = new Date(record.timestamp);
+    const day = d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
+    const time = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    return `${index + 1}. ${day} ${time}`;
+  });
+  const values = sorted.map(record => Number((record.duration_seconds / 60).toFixed(2)));
+
+  bathroomVisitChart.data.labels = labels;
+  bathroomVisitChart.data.datasets[0].data = values;
+  bathroomVisitChart.update();
+}
+
 function toggleStatsSection() {
   const section = document.getElementById('stats-section');
   const toggleBtn = document.getElementById('toggle-stats-btn');
   const isHidden = section.classList.toggle('is-hidden');
 
-  toggleBtn.textContent = isHidden ? 'Ver estadisticas' : 'Ocultar estadisticas';
+  toggleBtn.textContent = isHidden ? 'Ver estadísticas' : 'Ocultar estadísticas';
   toggleBtn.setAttribute('aria-expanded', String(!isHidden));
 
   if (!isHidden) {
     section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+async function toggleRecordsSection() {
+  const section = document.getElementById('records-section');
+  const toggleBtn = document.getElementById('toggle-records-btn');
+  const isHidden = section.classList.toggle('is-hidden');
+
+  toggleBtn.textContent = isHidden ? 'Ver registros recientes' : 'Ocultar registros recientes';
+  toggleBtn.setAttribute('aria-expanded', String(!isHidden));
+
+  if (!isHidden) {
+    await loadRecords();
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+async function loadRecords() {
+  try {
+    const [bathroom, food] = await Promise.all([
+      apiFetchJson(`${API_URL}/api/bathroom/recent`),
+      apiFetchJson(`${API_URL}/api/food/recent`)
+    ]);
+
+    const list = document.getElementById('records-list');
+    list.innerHTML = '';
+
+    const formatTime = (ts) => {
+      const d = new Date(ts);
+      return d.toLocaleString('es-ES', { 
+        day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' 
+      });
+    };
+
+    const formatDuration = (secs) => {
+      const m = Math.floor(secs / 60);
+      const s = secs % 60;
+      return `${m}m ${s}s`;
+    };
+
+    const allRecords = [
+      ...bathroom.map(r => ({ ...r, type: 'bathroom', label: `Baño (${formatDuration(r.duration_seconds)})` })),
+      ...food.map(r => ({ ...r, type: 'food', label: `Comida: ${r.food_type} ($${r.estimated_price})` }))
+    ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    if (allRecords.length === 0) {
+      list.innerHTML = '<p class="no-records">No hay registros recientes.</p>';
+      return;
+    }
+
+    allRecords.forEach(r => {
+      const item = document.createElement('div');
+      item.className = 'record-item';
+      item.innerHTML = `
+        <span class="record-info">
+          <span class="record-type">${r.type === 'bathroom' ? '🚽' : '🍽️'}</span>
+          <span class="record-label">${r.label}</span>
+          <span class="record-time">${formatTime(r.timestamp)}</span>
+        </span>
+        <button class="delete-btn" data-id="${r.id}" data-type="${r.type}">✕</button>
+      `;
+      list.appendChild(item);
+    });
+
+    list.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.target.dataset.id;
+        const type = e.target.dataset.type;
+        if (confirm('¿Eliminar este registro?')) {
+          await deleteRecord(id, type);
+          loadRecords();
+          loadStats();
+          updateCharts(currentPeriod);
+        }
+      });
+    });
+  } catch (error) {
+    console.error('Error loading records:', error);
+  }
+}
+
+async function deleteRecord(id, type) {
+  try {
+    await apiFetchJson(`${API_URL}/api/${type}/${id}`, { method: 'DELETE' });
+  } catch (error) {
+    console.error('Error deleting record:', error);
+    alert('Error al eliminar registro');
   }
 }
 

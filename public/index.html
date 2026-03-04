@@ -18,7 +18,7 @@
       <h2>G Control</h2>
       <p class="auth-subtitle">Acceso privado.</p>
       <form id="auth-form" class="auth-form">
-        <input id="auth-password" type="password" maxlength="2" autocomplete="off" placeholder="Contrasena" />
+        <input id="auth-password" type="password" maxlength="2" autocomplete="off" placeholder="Contraseña" />
         <button type="submit" class="auth-btn">Entrar</button>
       </form>
       <p id="auth-error" class="auth-error" aria-live="polite"></p>
@@ -29,7 +29,7 @@
     <header class="app-header panel">
       <p class="kicker">MONITOR DIARIO</p>
       <h1>G Control</h1>
-      <p class="subtitle">Registro rapido de pausas y comidas con vista de estadisticas.</p>
+      <p class="subtitle">Registro rápido de pausas y comidas con vista de estadísticas.</p>
     </header>
 
     <section class="buttons-section panel">
@@ -37,7 +37,7 @@
         <span class="icon-shell">
           <span class="icon">🚽</span>
         </span>
-        <span class="label">Bano</span>
+        <span class="label">Baño</span>
         <span id="bathroom-timer" class="timer">00:00</span>
       </button>
 
@@ -51,8 +51,19 @@
     </section>
 
     <section class="reveal-section">
+      <button id="toggle-records-btn" class="reveal-btn" aria-expanded="false">
+        Ver registros recientes
+      </button>
+    </section>
+
+    <section id="records-section" class="records-section panel is-hidden">
+      <h3>Registros recientes</h3>
+      <div id="records-list" class="records-list"></div>
+    </section>
+
+    <section class="reveal-section">
       <button id="toggle-stats-btn" class="reveal-btn" aria-expanded="false">
-        Ver estadisticas
+        Ver estadísticas
       </button>
     </section>
 
@@ -81,7 +92,7 @@
           <div class="summary-grid">
             <div class="summary-item">
               <span class="summary-value" id="bathroom-count">0</span>
-              <span class="summary-label">Veces bano</span>
+              <span class="summary-label">Veces baño</span>
             </div>
             <div class="summary-item">
               <span class="summary-value" id="bathroom-time">0m</span>
@@ -99,8 +110,18 @@
         </div>
 
         <div class="chart-card">
-          <h3>Veces al bano</h3>
+          <h3>Veces al baño</h3>
           <canvas id="bathroomChart"></canvas>
+        </div>
+
+        <div class="chart-card">
+          <h3>Tiempo en baño (min)</h3>
+          <canvas id="bathroomTimeChart"></canvas>
+        </div>
+
+        <div class="chart-card">
+          <h3>Tiempo por cada visita (min)</h3>
+          <canvas id="bathroomVisitChart"></canvas>
         </div>
 
         <div class="chart-card">
@@ -111,6 +132,11 @@
         <div class="chart-card full-width">
           <h3>Gasto en comida</h3>
           <canvas id="expenseChart"></canvas>
+        </div>
+
+        <div class="stat-card full-width">
+          <h3>Detalle de registros</h3>
+          <div id="stats-details" class="stats-details"></div>
         </div>
       </div>
     </section>

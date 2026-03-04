@@ -303,7 +303,7 @@ body {
   padding: 1rem;
   overflow: hidden;
   transition: max-height 320ms ease, opacity 220ms ease, transform 320ms ease, margin-top 320ms ease;
-  max-height: 1400px;
+  max-height: 6000px;
   opacity: 1;
   transform: translateY(0);
 }
@@ -318,6 +318,10 @@ body {
   border: 0;
   box-shadow: none;
   pointer-events: none;
+}
+
+.records-section.is-hidden {
+  display: none;
 }
 
 .tabs {
@@ -485,6 +489,110 @@ body {
   border: 1px solid rgba(255, 138, 199, 0.4);
 }
 
+.records-section {
+  padding: 1rem;
+}
+
+.records-section h3 {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.9rem;
+  color: var(--violet-soft);
+  margin-bottom: 0.8rem;
+}
+
+.records-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.record-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.65rem 0.8rem;
+  border-radius: 12px;
+  background: rgba(9, 4, 18, 0.72);
+  border: 1px solid rgba(164, 126, 255, 0.2);
+}
+
+.record-info {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.record-type {
+  font-size: 1.1rem;
+}
+
+.record-label {
+  font-size: 0.85rem;
+  color: var(--text-main);
+}
+
+.record-time {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.delete-btn {
+  border: 1px solid rgba(255, 107, 157, 0.5);
+  background: rgba(255, 107, 157, 0.15);
+  color: #ff6b9d;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  display: grid;
+  place-items: center;
+  transition: background 150ms ease;
+}
+
+.delete-btn:hover {
+  background: rgba(255, 107, 157, 0.3);
+}
+
+.no-records {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 1rem;
+  font-size: 0.85rem;
+}
+
+.stats-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  background: rgba(9, 4, 18, 0.5);
+  font-size: 0.8rem;
+}
+
+.detail-icon {
+  font-size: 0.9rem;
+}
+
+.detail-label {
+  flex: 1;
+  color: var(--text-main);
+}
+
+.detail-time {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -531,6 +639,7 @@ body {
   .summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
 }
 
 @media (max-width: 420px) {
