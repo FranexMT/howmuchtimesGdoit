@@ -68,6 +68,10 @@ body {
   display: none;
 }
 
+.hidden {
+  display: none;
+}
+
 .auth-card {
   width: min(420px, 100%);
   border-radius: 24px;
@@ -258,6 +262,20 @@ body {
   color: #ffd0e9;
 }
 
+.action-btn.salida {
+  background: linear-gradient(155deg, rgba(255, 200, 87, 0.22), rgba(35, 30, 15, 0.92));
+  border-color: rgba(255, 200, 87, 0.42);
+  box-shadow: 0 16px 32px rgba(47, 40, 20, 0.62);
+}
+
+.action-btn.salida .icon-shell {
+  background: linear-gradient(145deg, rgba(255, 210, 100, 0.27), rgba(150, 120, 50, 0.24));
+}
+
+.action-btn.salida .label {
+  color: #ffe5a0;
+}
+
 .action-btn:hover {
   transform: translateY(-3px);
 }
@@ -324,11 +342,15 @@ body {
   display: none;
 }
 
+.tabs.is-hidden {
+  display: none;
+}
+
 .tabs {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.5rem;
-  margin-bottom: 0.9rem;
+  display: flex;
+  justify-content: center;
+  gap: 0.3rem;
+  margin-bottom: 0.5rem;
 }
 
 .tab {
@@ -336,10 +358,11 @@ body {
   background: rgba(21, 12, 38, 0.86);
   color: var(--text-muted);
   border-radius: 999px;
-  padding: 0.63rem;
+  padding: 0.35rem 0.5rem;
   cursor: pointer;
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.78rem;
+  font-size: 0.65rem;
+  text-align: center;
 }
 
 .tab.active {
@@ -461,6 +484,22 @@ body {
   border-color: transparent;
 }
 
+.modal-content select {
+  width: 100%;
+  margin-bottom: 0.7rem;
+  padding: 0.82rem 0.88rem;
+  border-radius: 12px;
+  border: 1px solid rgba(164, 126, 255, 0.4);
+  background: rgba(11, 6, 22, 0.92);
+  color: var(--text-main);
+  font-size: 1rem;
+}
+
+.modal-content select:focus {
+  outline: 2px solid rgba(166, 125, 255, 0.55);
+  border-color: transparent;
+}
+
 .modal-buttons {
   margin-top: 0.4rem;
   display: grid;
@@ -552,6 +591,25 @@ body {
 
 .delete-btn:hover {
   background: rgba(255, 107, 157, 0.3);
+}
+
+.edit-btn {
+  border: 1px solid rgba(127, 243, 203, 0.5);
+  background: rgba(127, 243, 203, 0.15);
+  color: #7ff3cb;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  display: grid;
+  place-items: center;
+  transition: background 150ms ease;
+  margin-right: 6px;
+}
+
+.edit-btn:hover {
+  background: rgba(127, 243, 203, 0.3);
 }
 
 .no-records {

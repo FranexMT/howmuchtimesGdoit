@@ -2,8 +2,10 @@ const API_URL = window.location.origin;
 
 let bathroomStartTime = null;
 let bathroomInterval = null;
+let salidaStartTime = null;
+let salidaInterval = null;
 let currentPeriod = 'daily';
-let bathroomChart, bathroomTimeChart, bathroomVisitChart, foodChart, expenseChart;
+let bathroomChart, bathroomTimeChart, bathroomVisitChart, foodChart, expenseChart, salidaChart, salidaTimeChart;
 let appStarted = false;
 
 const chartColors = {
@@ -128,6 +130,38 @@ function initCharts() {
     },
     options: commonOptions
   });
+
+  salidaChart = new Chart(document.getElementById('salidaChart'), {
+    type: 'bar',
+    data: {
+      labels: [],
+      datasets: [{
+        data: [],
+        backgroundColor: chartColors.pinkBg,
+        borderColor: chartColors.pink,
+        borderWidth: 2,
+        borderRadius: 6,
+        borderSkipped: false
+      }]
+    },
+    options: commonOptions
+  });
+
+  salidaTimeChart = new Chart(document.getElementById('salidaTimeChart'), {
+    type: 'bar',
+    data: {
+      labels: [],
+      datasets: [{
+        data: [],
+        backgroundColor: 'rgba(255, 200, 87, 0.4)',
+        borderColor: 'rgba(255, 200, 87, 0.95)',
+        borderWidth: 2,
+        borderRadius: 6,
+        borderSkipped: false
+      }]
+    },
+    options: commonOptions
+  });
 }
 
 function startApp() {
@@ -233,6 +267,14 @@ async function updateCharts(period) {
     expenseChart.data.labels = data.labels;
     expenseChart.data.datasets[0].data = data.expenseChart;
     expenseChart.update();
+
+    salidaChart.data.labels = data.labels;
+    salidaChart.data.datasets[0].data = data.salidaChart || [];
+    salidaChart.update();
+
+    salidaTimeChart.data.labels = data.labels;
+    salidaTimeChart.data.datasets[0].data = data.salidaTimeChart || [];
+    salidaTimeChart.update();
   } catch (error) {
     if (error.message !== 'unauthorized') {
       console.error('Error:', error);
@@ -242,10 +284,17 @@ async function updateCharts(period) {
 
 document.getElementById('bathroom-btn').addEventListener('click', toggleBathroom);
 document.getElementById('food-btn').addEventListener('click', openFoodModal);
+document.getElementById('salida-btn').addEventListener('click', toggleSalida);
 document.getElementById('save-food').addEventListener('click', saveFood);
 document.getElementById('cancel-food').addEventListener('click', closeFoodModal);
 document.getElementById('toggle-stats-btn').addEventListener('click', toggleStatsSection);
 document.getElementById('toggle-records-btn').addEventListener('click', toggleRecordsSection);
+document.getElementById('inject-btn').addEventListener('click', openInjectModal);
+document.getElementById('cancel-inject').addEventListener('click', closeInjectModal);
+document.getElementById('save-inject').addEventListener('click', saveInjectedRecord);
+document.getElementById('cancel-edit').addEventListener('click', closeEditModal);
+document.getElementById('save-edit').addEventListener('click', saveEditedRecord);
+document.getElementById('inject-type').addEventListener('change', toggleInjectFields);
 
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
@@ -283,6 +332,45 @@ function toggleBathroom() {
 async function saveBathroom(duration) {
   try {
     await apiFetchJson(`${API_URL}/api/bathroom`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ duration_seconds: duration })
+    });
+    loadStats();
+    updateCharts(currentPeriod);
+  } catch (error) {
+    if (error.message !== 'unauthorized') {
+      console.error('Error:', error);
+    }
+  }
+}
+
+function toggleSalida() {
+  const btn = document.getElementById('salida-btn');
+  const timer = document.getElementById('salida-timer');
+
+  if (salidaStartTime) {
+    clearInterval(salidaInterval);
+    const duration = Math.floor((Date.now() - salidaStartTime) / 1000);
+    saveSalida(duration);
+    salidaStartTime = null;
+    btn.classList.remove('active');
+    timer.textContent = '00:00';
+  } else {
+    salidaStartTime = Date.now();
+    btn.classList.add('active');
+    salidaInterval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - salidaStartTime) / 1000);
+      const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
+      const secs = (elapsed % 60).toString().padStart(2, '0');
+      timer.textContent = `${mins}:${secs}`;
+    }, 1000);
+  }
+}
+
+async function saveSalida(duration) {
+  try {
+    await apiFetchJson(`${API_URL}/api/salida`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ duration_seconds: duration })
@@ -349,6 +437,14 @@ async function loadStats() {
     document.getElementById('food-count').textContent = data.food.food_count || 0;
     document.getElementById('food-total').textContent =
       `$${(data.food.food_total_price || 0).toFixed(2)}`;
+
+    document.getElementById('salida-count').textContent = data.salida?.salida_count || 0;
+    const salidaTotalSeconds = data.salida?.salida_total_time || 0;
+    const salidaHours = Math.floor(salidaTotalSeconds / 3600);
+    const salidaMins = Math.floor((salidaTotalSeconds % 3600) / 60);
+    document.getElementById('salida-time').textContent =
+      salidaHours > 0 ? `${salidaHours}h ${salidaMins}m` : `${salidaMins} min`;
+
     updateBathroomVisitChart(data.bathroom_details || []);
 
     const detailsContainer = document.getElementById('stats-details');
@@ -377,6 +473,12 @@ async function loadStats() {
         label: `${r.food_type} ($${r.estimated_price})`,
         time: formatTime(r.timestamp),
         sortKey: new Date(r.timestamp).getTime()
+      })),
+      ...(data.salida_details || []).map(r => ({ 
+        type: 'salida', 
+        label: `Salida (${formatDuration(r.duration_seconds)})`,
+        time: formatTime(r.timestamp),
+        sortKey: new Date(r.timestamp).getTime()
       }))
     ].sort((a, b) => b.sortKey - a.sortKey);
 
@@ -387,7 +489,7 @@ async function loadStats() {
 
     detailsContainer.innerHTML = allRecords.map(r => `
       <div class="detail-item">
-        <span class="detail-icon">${r.type === 'bathroom' ? '🚽' : '🍽️'}</span>
+        <span class="detail-icon">${r.type === 'bathroom' ? '🚽' : r.type === 'food' ? '🍽️' : '🚪'}</span>
         <span class="detail-label">${r.label}</span>
         <span class="detail-time">${r.time}</span>
       </div>
@@ -417,10 +519,15 @@ function updateBathroomVisitChart(records) {
 function toggleStatsSection() {
   const section = document.getElementById('stats-section');
   const toggleBtn = document.getElementById('toggle-stats-btn');
+  const tabs = document.querySelector('.tabs');
   const isHidden = section.classList.toggle('is-hidden');
 
   toggleBtn.textContent = isHidden ? 'Ver estadísticas' : 'Ocultar estadísticas';
   toggleBtn.setAttribute('aria-expanded', String(!isHidden));
+
+  if (tabs) {
+    tabs.classList.toggle('is-hidden');
+  }
 
   if (!isHidden) {
     section.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -483,9 +590,21 @@ async function loadRecords() {
           <span class="record-label">${r.label}</span>
           <span class="record-time">${formatTime(r.timestamp)}</span>
         </span>
+        <button class="edit-btn" data-id="${r.id}" data-type="${r.type}">✎</button>
         <button class="delete-btn" data-id="${r.id}" data-type="${r.type}">✕</button>
       `;
       list.appendChild(item);
+    });
+
+    list.querySelectorAll('.edit-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.target.dataset.id;
+        const type = e.target.dataset.type;
+        const record = allRecords.find(r => r.id == id && r.type === type);
+        if (record) {
+          openEditModal(record);
+        }
+      });
     });
 
     list.querySelectorAll('.delete-btn').forEach(btn => {
@@ -511,6 +630,189 @@ async function deleteRecord(id, type) {
   } catch (error) {
     console.error('Error deleting record:', error);
     alert('Error al eliminar registro');
+  }
+}
+
+function openEditModal(record) {
+  const modal = document.getElementById('edit-modal');
+  const editType = document.getElementById('edit-type');
+  const editId = document.getElementById('edit-id');
+  const bathroomFields = document.getElementById('edit-bathroom-fields');
+  const foodFields = document.getElementById('edit-food-fields');
+
+  editType.value = record.type;
+  editId.value = record.id;
+
+  if (record.type === 'bathroom') {
+    bathroomFields.classList.remove('hidden');
+    foodFields.classList.add('hidden');
+    document.getElementById('edit-duration').value = record.duration_seconds;
+    const date = new Date(record.timestamp);
+    document.getElementById('edit-timestamp').value = date.toISOString().slice(0, 16);
+  } else {
+    bathroomFields.classList.add('hidden');
+    foodFields.classList.remove('hidden');
+    document.getElementById('edit-food-type').value = record.food_type;
+    document.getElementById('edit-price').value = record.estimated_price;
+    const date = new Date(record.timestamp);
+    document.getElementById('edit-timestamp-food').value = date.toISOString().slice(0, 16);
+  }
+
+  modal.classList.add('active');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').classList.remove('active');
+}
+
+async function saveEditedRecord() {
+  const type = document.getElementById('edit-type').value;
+  const id = document.getElementById('edit-id').value;
+  let data = {};
+
+  if (type === 'bathroom') {
+    data.duration_seconds = parseInt(document.getElementById('edit-duration').value) || 0;
+    const timestamp = document.getElementById('edit-timestamp').value;
+    if (timestamp) {
+      data.timestamp = new Date(timestamp).toISOString();
+    }
+  } else {
+    data.food_type = document.getElementById('edit-food-type').value.trim();
+    data.estimated_price = parseFloat(document.getElementById('edit-price').value) || 0;
+    const timestamp = document.getElementById('edit-timestamp-food').value;
+    if (timestamp) {
+      data.timestamp = new Date(timestamp).toISOString();
+    }
+  }
+
+  try {
+    await apiFetchJson(`${API_URL}/api/${type}/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    closeEditModal();
+    loadRecords();
+    loadStats();
+    updateCharts(currentPeriod);
+  } catch (error) {
+    console.error('Error saving edit:', error);
+    alert('Error al guardar cambios');
+  }
+}
+
+function openInjectModal() {
+  const modal = document.getElementById('inject-modal');
+  document.getElementById('inject-type').value = '';
+  document.getElementById('inject-bathroom-fields').classList.add('hidden');
+  document.getElementById('inject-food-fields').classList.add('hidden');
+  document.getElementById('inject-start-bathroom').value = '';
+  document.getElementById('inject-duration').value = '';
+  document.getElementById('inject-start-food').value = '';
+  document.getElementById('inject-food-type').value = '';
+  document.getElementById('inject-price').value = '';
+  modal.classList.add('active');
+}
+
+function closeInjectModal() {
+  document.getElementById('inject-modal').classList.remove('active');
+}
+
+function toggleInjectFields() {
+  const type = document.getElementById('inject-type').value;
+  const bathroomFields = document.getElementById('inject-bathroom-fields');
+  const foodFields = document.getElementById('inject-food-fields');
+  const salidaFields = document.getElementById('inject-salida-fields');
+
+  if (type === 'bathroom') {
+    bathroomFields.classList.remove('hidden');
+    foodFields.classList.add('hidden');
+    salidaFields.classList.add('hidden');
+  } else if (type === 'food') {
+    bathroomFields.classList.add('hidden');
+    foodFields.classList.remove('hidden');
+    salidaFields.classList.add('hidden');
+  } else if (type === 'salida') {
+    bathroomFields.classList.add('hidden');
+    foodFields.classList.add('hidden');
+    salidaFields.classList.remove('hidden');
+  } else {
+    bathroomFields.classList.add('hidden');
+    foodFields.classList.add('hidden');
+    salidaFields.classList.add('hidden');
+  }
+}
+
+async function saveInjectedRecord() {
+  const type = document.getElementById('inject-type').value;
+  if (!type) {
+    alert('Por favor selecciona un tipo');
+    return;
+  }
+
+  let data = {};
+
+  if (type === 'bathroom') {
+    const durationMinutes = parseInt(document.getElementById('inject-duration').value) || 0;
+    const durationSeconds = durationMinutes * 60;
+    data.duration_seconds = durationSeconds;
+    
+    const startTime = document.getElementById('inject-start-bathroom').value;
+    let timestamp;
+    if (startTime) {
+      const [hours, minutes] = startTime.split(':').map(Number);
+      const now = new Date();
+      timestamp = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
+      timestamp = new Date(timestamp.getTime() - (durationSeconds * 1000));
+    } else {
+      timestamp = new Date(Date.now() - (durationSeconds * 1000));
+    }
+    data.timestamp = timestamp.toISOString();
+  } else if (type === 'salida') {
+    const durationMinutes = parseInt(document.getElementById('inject-duration-salida').value) || 0;
+    const durationSeconds = durationMinutes * 60;
+    data.duration_seconds = durationSeconds;
+    
+    const startTime = document.getElementById('inject-start-salida').value;
+    let timestamp;
+    if (startTime) {
+      const [hours, minutes] = startTime.split(':').map(Number);
+      const now = new Date();
+      timestamp = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
+      timestamp = new Date(timestamp.getTime() - (durationSeconds * 1000));
+    } else {
+      timestamp = new Date(Date.now() - (durationSeconds * 1000));
+    }
+    data.timestamp = timestamp.toISOString();
+  } else {
+    data.food_type = document.getElementById('inject-food-type').value.trim();
+    data.estimated_price = parseFloat(document.getElementById('inject-price').value) || 0;
+    
+    const startTime = document.getElementById('inject-start-food').value;
+    let timestamp;
+    if (startTime) {
+      const [hours, minutes] = startTime.split(':').map(Number);
+      const now = new Date();
+      timestamp = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
+    } else {
+      timestamp = new Date();
+    }
+    data.timestamp = timestamp.toISOString();
+  }
+
+  try {
+    await apiFetchJson(`${API_URL}/api/${type}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    closeInjectModal();
+    loadRecords();
+    loadStats();
+    updateCharts(currentPeriod);
+  } catch (error) {
+    console.error('Error saving inject:', error);
+    alert('Error al inyectar registro');
   }
 }
 

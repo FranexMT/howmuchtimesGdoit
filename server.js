@@ -128,6 +128,14 @@ function mapFoodRecord(record) {
   };
 }
 
+function mapSalidaRecord(record) {
+  return {
+    id: record.id,
+    timestamp: record.timestamp,
+    duration_seconds: record.durationSeconds
+  };
+}
+
 app.post('/api/auth/login', (req, res) => {
   const { password } = req.body || {};
   const attempt = normalizeString(password).charAt(0);
@@ -179,13 +187,20 @@ app.post('/api/bathroom', async (req, res) => {
   try {
     const rawDuration = req.body?.duration_seconds;
     const duration = Number(rawDuration);
+    const timestamp = req.body?.timestamp ? new Date(req.body.timestamp) : undefined;
 
     if (!Number.isFinite(duration) || duration < 0) {
       return res.status(400).json({ error: 'invalid_duration_seconds' });
     }
+    if (timestamp && isNaN(timestamp.getTime())) {
+      return res.status(400).json({ error: 'invalid_timestamp' });
+    }
 
     const result = await prisma.bathroomLog.create({
-      data: { durationSeconds: Math.floor(duration) }
+      data: { 
+        durationSeconds: Math.floor(duration),
+        ...(timestamp && { timestamp })
+      }
     });
 
     return res.json(mapBathroomRecord(result));
@@ -198,6 +213,7 @@ app.post('/api/food', async (req, res) => {
   try {
     const foodType = String(req.body?.food_type || '').trim();
     const estimatedPrice = Number(req.body?.estimated_price || 0);
+    const timestamp = req.body?.timestamp ? new Date(req.body.timestamp) : undefined;
 
     if (!foodType) {
       return res.status(400).json({ error: 'invalid_food_type' });
@@ -205,15 +221,45 @@ app.post('/api/food', async (req, res) => {
     if (!Number.isFinite(estimatedPrice) || estimatedPrice < 0) {
       return res.status(400).json({ error: 'invalid_estimated_price' });
     }
+    if (timestamp && isNaN(timestamp.getTime())) {
+      return res.status(400).json({ error: 'invalid_timestamp' });
+    }
 
     const result = await prisma.foodLog.create({
       data: {
         foodType,
-        estimatedPrice
+        estimatedPrice,
+        ...(timestamp && { timestamp })
       }
     });
 
     return res.json(mapFoodRecord(result));
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/salida', async (req, res) => {
+  try {
+    const rawDuration = req.body?.duration_seconds;
+    const duration = Number(rawDuration);
+    const timestamp = req.body?.timestamp ? new Date(req.body.timestamp) : undefined;
+
+    if (!Number.isFinite(duration) || duration < 0) {
+      return res.status(400).json({ error: 'invalid_duration_seconds' });
+    }
+    if (timestamp && isNaN(timestamp.getTime())) {
+      return res.status(400).json({ error: 'invalid_timestamp' });
+    }
+
+    const result = await prisma.salidaLog.create({
+      data: { 
+        durationSeconds: Math.floor(duration),
+        ...(timestamp && { timestamp })
+      }
+    });
+
+    return res.json(mapSalidaRecord(result));
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
@@ -238,6 +284,18 @@ app.get('/api/food/recent', async (_req, res) => {
       take: RECENT_LIMIT
     });
     return res.json(rows.map(mapFoodRecord));
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/salida/recent', async (_req, res) => {
+  try {
+    const rows = await prisma.salidaLog.findMany({
+      orderBy: { timestamp: 'desc' },
+      take: RECENT_LIMIT
+    });
+    return res.json(rows.map(mapSalidaRecord));
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
@@ -275,6 +333,160 @@ app.delete('/api/food/:id', async (req, res) => {
   }
 });
 
+app.delete('/api/salida/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'invalid_id' });
+    }
+    await prisma.salidaLog.delete({ where: { id } });
+    return res.json({ success: true });
+  } catch (error) {
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'record_not_found' });
+    }
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/bathroom/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'invalid_id' });
+    }
+
+    const rawDuration = req.body?.duration_seconds;
+    const duration = rawDuration !== undefined ? Number(rawDuration) : undefined;
+    const timestamp = req.body?.timestamp ? new Date(req.body.timestamp) : undefined;
+
+    if (duration !== undefined && (!Number.isFinite(duration) || duration < 0)) {
+      return res.status(400).json({ error: 'invalid_duration_seconds' });
+    }
+    if (timestamp && isNaN(timestamp.getTime())) {
+      return res.status(400).json({ error: 'invalid_timestamp' });
+    }
+
+    const updateData = {};
+    if (duration !== undefined) {
+      updateData.durationSeconds = Math.floor(duration);
+    }
+    if (timestamp) {
+      updateData.timestamp = timestamp;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: 'no_fields_to_update' });
+    }
+
+    const result = await prisma.bathroomLog.update({
+      where: { id },
+      data: updateData
+    });
+
+    return res.json(mapBathroomRecord(result));
+  } catch (error) {
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'record_not_found' });
+    }
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/food/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'invalid_id' });
+    }
+
+    const foodType = req.body?.food_type !== undefined ? String(req.body.food_type).trim() : undefined;
+    const estimatedPrice = req.body?.estimated_price !== undefined ? Number(req.body.estimated_price) : undefined;
+    const timestamp = req.body?.timestamp ? new Date(req.body.timestamp) : undefined;
+
+    if (foodType !== undefined && !foodType) {
+      return res.status(400).json({ error: 'invalid_food_type' });
+    }
+    if (estimatedPrice !== undefined && (!Number.isFinite(estimatedPrice) || estimatedPrice < 0)) {
+      return res.status(400).json({ error: 'invalid_estimated_price' });
+    }
+    if (timestamp && isNaN(timestamp.getTime())) {
+      return res.status(400).json({ error: 'invalid_timestamp' });
+    }
+
+    const updateData = {};
+    if (foodType !== undefined) {
+      updateData.foodType = foodType;
+    }
+    if (estimatedPrice !== undefined) {
+      updateData.estimatedPrice = estimatedPrice;
+    }
+    if (timestamp) {
+      updateData.timestamp = timestamp;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: 'no_fields_to_update' });
+    }
+
+    const result = await prisma.foodLog.update({
+      where: { id },
+      data: updateData
+    });
+
+    return res.json(mapFoodRecord(result));
+  } catch (error) {
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'record_not_found' });
+    }
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/salida/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'invalid_id' });
+    }
+
+    const rawDuration = req.body?.duration_seconds;
+    const duration = rawDuration !== undefined ? Number(rawDuration) : undefined;
+    const timestamp = req.body?.timestamp ? new Date(req.body.timestamp) : undefined;
+
+    if (duration !== undefined && (!Number.isFinite(duration) || duration < 0)) {
+      return res.status(400).json({ error: 'invalid_duration_seconds' });
+    }
+    if (timestamp && isNaN(timestamp.getTime())) {
+      return res.status(400).json({ error: 'invalid_timestamp' });
+    }
+
+    const updateData = {};
+    if (duration !== undefined) {
+      updateData.durationSeconds = Math.floor(duration);
+    }
+    if (timestamp) {
+      updateData.timestamp = timestamp;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: 'no_fields_to_update' });
+    }
+
+    const result = await prisma.salidaLog.update({
+      where: { id },
+      data: updateData
+    });
+
+    return res.json(mapSalidaRecord(result));
+  } catch (error) {
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'record_not_found' });
+    }
+    return res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/stats/:period', async (req, res) => {
   try {
     const period = req.params.period;
@@ -283,7 +495,7 @@ app.get('/api/stats/:period', async (req, res) => {
     }
 
     const start = getPeriodStart(period);
-    const [bathroomAggregate, foodAggregate, bathroomDetailsRows, foodDetailsRows] = await Promise.all([
+    const [bathroomAggregate, foodAggregate, salidaAggregate, bathroomDetailsRows, foodDetailsRows, salidaDetailsRows] = await Promise.all([
       prisma.bathroomLog.aggregate({
         where: { timestamp: { gte: start } },
         _count: { id: true },
@@ -294,11 +506,20 @@ app.get('/api/stats/:period', async (req, res) => {
         _count: { id: true },
         _sum: { estimatedPrice: true }
       }),
+      prisma.salidaLog.aggregate({
+        where: { timestamp: { gte: start } },
+        _count: { id: true },
+        _sum: { durationSeconds: true }
+      }),
       prisma.bathroomLog.findMany({
         where: { timestamp: { gte: start } },
         orderBy: { timestamp: 'desc' }
       }),
       prisma.foodLog.findMany({
+        where: { timestamp: { gte: start } },
+        orderBy: { timestamp: 'desc' }
+      }),
+      prisma.salidaLog.findMany({
         where: { timestamp: { gte: start } },
         orderBy: { timestamp: 'desc' }
       })
@@ -313,8 +534,13 @@ app.get('/api/stats/:period', async (req, res) => {
         food_count: foodAggregate._count.id,
         food_total_price: foodAggregate._sum.estimatedPrice || 0
       },
+      salida: {
+        salida_count: salidaAggregate._count.id,
+        salida_total_time: salidaAggregate._sum.durationSeconds || 0
+      },
       bathroom_details: bathroomDetailsRows.map(mapBathroomRecord),
-      food_details: foodDetailsRows.map(mapFoodRecord)
+      food_details: foodDetailsRows.map(mapFoodRecord),
+      salida_details: salidaDetailsRows.map(mapSalidaRecord)
     });
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -333,12 +559,16 @@ app.get('/api/chart/:period', async (req, res) => {
     startDate.setHours(0, 0, 0, 0);
     startDate.setDate(startDate.getDate() - (days - 1));
 
-    const [bathroomLogs, foodLogs] = await Promise.all([
+    const [bathroomLogs, foodLogs, salidaLogs] = await Promise.all([
       prisma.bathroomLog.findMany({
         where: { timestamp: { gte: startDate } },
         orderBy: { timestamp: 'asc' }
       }),
       prisma.foodLog.findMany({
+        where: { timestamp: { gte: startDate } },
+        orderBy: { timestamp: 'asc' }
+      }),
+      prisma.salidaLog.findMany({
         where: { timestamp: { gte: startDate } },
         orderBy: { timestamp: 'asc' }
       })
@@ -349,6 +579,8 @@ app.get('/api/chart/:period', async (req, res) => {
     const bathroomTimeByDay = {};
     const foodByDay = {};
     const expenseByDay = {};
+    const salidaByDay = {};
+    const salidaTimeByDay = {};
 
     for (let i = 0; i < days; i += 1) {
       const date = new Date(startDate);
@@ -363,6 +595,8 @@ app.get('/api/chart/:period', async (req, res) => {
       bathroomTimeByDay[key] = 0;
       foodByDay[key] = 0;
       expenseByDay[key] = 0;
+      salidaByDay[key] = 0;
+      salidaTimeByDay[key] = 0;
     }
 
     bathroomLogs.forEach((log) => {
@@ -381,12 +615,22 @@ app.get('/api/chart/:period', async (req, res) => {
       }
     });
 
+    salidaLogs.forEach((log) => {
+      const key = toDateKey(log.timestamp);
+      if (Object.prototype.hasOwnProperty.call(salidaByDay, key)) {
+        salidaByDay[key] += 1;
+        salidaTimeByDay[key] += log.durationSeconds / 60;
+      }
+    });
+
     return res.json({
       labels,
       bathroomChart: Object.values(bathroomByDay),
       bathroomTimeChart: Object.values(bathroomTimeByDay).map((m) => Number(m.toFixed(2))),
       foodChart: Object.values(foodByDay),
-      expenseChart: Object.values(expenseByDay).map((v) => Number(v.toFixed(2)))
+      expenseChart: Object.values(expenseByDay).map((v) => Number(v.toFixed(2))),
+      salidaChart: Object.values(salidaByDay),
+      salidaTimeChart: Object.values(salidaTimeByDay).map((m) => Number(m.toFixed(2)))
     });
   } catch (error) {
     return res.status(500).json({ error: error.message });

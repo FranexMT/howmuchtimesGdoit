@@ -19,3 +19,9 @@ model FoodLog {
   foodType       String
   estimatedPrice Float
 }
+
+model SalidaLog {
+  id              Int      @id @default(autoincrement())
+  timestamp       DateTime @default(now())
+  durationSeconds Int
+}
