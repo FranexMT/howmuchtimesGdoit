@@ -115,7 +115,8 @@ function mapBathroomRecord(record) {
   return {
     id: record.id,
     timestamp: record.timestamp,
-    duration_seconds: record.durationSeconds
+    duration_seconds: record.durationSeconds,
+    user_agent: record.userAgent
   };
 }
 
@@ -124,7 +125,8 @@ function mapFoodRecord(record) {
     id: record.id,
     timestamp: record.timestamp,
     food_type: record.foodType,
-    estimated_price: record.estimatedPrice
+    estimated_price: record.estimatedPrice,
+    user_agent: record.userAgent
   };
 }
 
@@ -132,7 +134,8 @@ function mapSalidaRecord(record) {
   return {
     id: record.id,
     timestamp: record.timestamp,
-    duration_seconds: record.durationSeconds
+    duration_seconds: record.durationSeconds,
+    user_agent: record.userAgent
   };
 }
 
@@ -188,6 +191,7 @@ app.post('/api/bathroom', async (req, res) => {
     const rawDuration = req.body?.duration_seconds;
     const duration = Number(rawDuration);
     const timestamp = req.body?.timestamp ? new Date(req.body.timestamp) : undefined;
+    const userAgent = req.headers['user-agent'] || null;
 
     if (!Number.isFinite(duration) || duration < 0) {
       return res.status(400).json({ error: 'invalid_duration_seconds' });
@@ -199,7 +203,8 @@ app.post('/api/bathroom', async (req, res) => {
     const result = await prisma.bathroomLog.create({
       data: { 
         durationSeconds: Math.floor(duration),
-        ...(timestamp && { timestamp })
+        ...(timestamp && { timestamp }),
+        ...(userAgent && { userAgent })
       }
     });
 
@@ -214,6 +219,7 @@ app.post('/api/food', async (req, res) => {
     const foodType = String(req.body?.food_type || '').trim();
     const estimatedPrice = Number(req.body?.estimated_price || 0);
     const timestamp = req.body?.timestamp ? new Date(req.body.timestamp) : undefined;
+    const userAgent = req.headers['user-agent'] || null;
 
     if (!foodType) {
       return res.status(400).json({ error: 'invalid_food_type' });
@@ -229,7 +235,8 @@ app.post('/api/food', async (req, res) => {
       data: {
         foodType,
         estimatedPrice,
-        ...(timestamp && { timestamp })
+        ...(timestamp && { timestamp }),
+        ...(userAgent && { userAgent })
       }
     });
 
@@ -244,6 +251,7 @@ app.post('/api/salida', async (req, res) => {
     const rawDuration = req.body?.duration_seconds;
     const duration = Number(rawDuration);
     const timestamp = req.body?.timestamp ? new Date(req.body.timestamp) : undefined;
+    const userAgent = req.headers['user-agent'] || null;
 
     if (!Number.isFinite(duration) || duration < 0) {
       return res.status(400).json({ error: 'invalid_duration_seconds' });
@@ -255,7 +263,8 @@ app.post('/api/salida', async (req, res) => {
     const result = await prisma.salidaLog.create({
       data: { 
         durationSeconds: Math.floor(duration),
-        ...(timestamp && { timestamp })
+        ...(timestamp && { timestamp }),
+        ...(userAgent && { userAgent })
       }
     });
 

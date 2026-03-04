@@ -11,6 +11,7 @@ model BathroomLog {
   id              Int      @id @default(autoincrement())
   timestamp       DateTime @default(now())
   durationSeconds Int
+  userAgent       String?
 }
 
 model FoodLog {
@@ -18,10 +19,12 @@ model FoodLog {
   timestamp      DateTime @default(now())
   foodType       String
   estimatedPrice Float
+  userAgent      String?
 }
 
 model SalidaLog {
   id              Int      @id @default(autoincrement())
   timestamp       DateTime @default(now())
   durationSeconds Int
+  userAgent       String?
 }

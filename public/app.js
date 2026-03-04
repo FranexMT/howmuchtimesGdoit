@@ -466,18 +466,21 @@ async function loadStats() {
         type: 'bathroom', 
         label: `Baño (${formatDuration(r.duration_seconds)})`,
         time: formatTime(r.timestamp),
+        user_agent: r.user_agent || 'Desconocido',
         sortKey: new Date(r.timestamp).getTime()
       })),
       ...(data.food_details || []).map(r => ({ 
         type: 'food', 
         label: `${r.food_type} ($${r.estimated_price})`,
         time: formatTime(r.timestamp),
+        user_agent: r.user_agent || 'Desconocido',
         sortKey: new Date(r.timestamp).getTime()
       })),
       ...(data.salida_details || []).map(r => ({ 
         type: 'salida', 
         label: `Salida (${formatDuration(r.duration_seconds)})`,
         time: formatTime(r.timestamp),
+        user_agent: r.user_agent || 'Desconocido',
         sortKey: new Date(r.timestamp).getTime()
       }))
     ].sort((a, b) => b.sortKey - a.sortKey);
@@ -490,7 +493,10 @@ async function loadStats() {
     detailsContainer.innerHTML = allRecords.map(r => `
       <div class="detail-item">
         <span class="detail-icon">${r.type === 'bathroom' ? '🚽' : r.type === 'food' ? '🍽️' : '🚪'}</span>
-        <span class="detail-label">${r.label}</span>
+        <div class="detail-info">
+          <span class="detail-label">${r.label}</span>
+          <span class="detail-device" title="${r.user_agent}">${r.user_agent}</span>
+        </div>
         <span class="detail-time">${r.time}</span>
       </div>
     `).join('');
