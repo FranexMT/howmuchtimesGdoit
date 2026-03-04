@@ -22,6 +22,48 @@ const chartColors = {
   ticks: 'rgba(205, 188, 242, 0.9)'
 };
 
+function formatUserAgent(ua) {
+  if (!ua) return 'Desconocido';
+  
+  const browsers = [
+    { pattern: /Edg/i, name: 'Edge' },
+    { pattern: /Chrome/i, name: 'Chrome' },
+    { pattern: /Safari/i, name: 'Safari' },
+    { pattern: /Firefox/i, name: 'Firefox' },
+    { pattern: /Opera|OPR/i, name: 'Opera' },
+    { pattern: /MSIE|Trident/i, name: 'IE' }
+  ];
+  
+  const os = [
+    { pattern: /Windows/i, name: 'Windows' },
+    { pattern: /Mac OS X/i, name: 'macOS' },
+    { pattern: /Linux/i, name: 'Linux' },
+    { pattern: /Android/i, name: 'Android' },
+    { pattern: /iOS|iPhone|iPad/i, name: 'iOS' }
+  ];
+  
+  let browser = 'Navegador';
+  for (const b of browsers) {
+    if (b.pattern.test(ua)) {
+      browser = b.name;
+      break;
+    }
+  }
+  
+  let osName = 'OS';
+  for (const o of os) {
+    if (o.pattern.test(ua)) {
+      osName = o.name;
+      break;
+    }
+  }
+  
+  // Remove version numbers for cleaner display
+  browser = browser.replace(/\s+\d+\.\d+/, '');
+  
+  return `${browser} / ${osName}`;
+}
+
 function normalizeString(value) {
   return value
     .normalize('NFD')
@@ -535,6 +577,17 @@ async function loadStats() {
     document.getElementById('salida-time').textContent =
       salidaHours > 0 ? `${salidaHours}h ${salidaMins}m` : `${salidaMins} min`;
 
+    // Calcular promedios
+    const bathroomCount = data.bathroom?.bathroom_count || 0;
+    const bathroomAvgSeconds = bathroomCount > 0 ? totalSeconds / bathroomCount : 0;
+    const bathroomAvgMins = Math.floor(bathroomAvgSeconds / 60);
+    document.getElementById('bathroom-avg').textContent = `${bathroomAvgMins}m`;
+
+    const salidaCount = data.salida?.salida_count || 0;
+    const salidaAvgSeconds = salidaCount > 0 ? salidaTotalSeconds / salidaCount : 0;
+    const salidaAvgMins = Math.floor(salidaAvgSeconds / 60);
+    document.getElementById('salida-avg').textContent = `${salidaAvgMins}m`;
+
     updateBathroomVisitChart(data.bathroom_details || []);
 
     const detailsContainer = document.getElementById('stats-details');
@@ -556,21 +609,21 @@ async function loadStats() {
         type: 'bathroom', 
         label: `Baño (${formatDuration(r.duration_seconds)})`,
         time: formatTime(r.timestamp),
-        user_agent: r.user_agent || 'Desconocido',
+        user_agent: formatUserAgent(r.user_agent),
         sortKey: new Date(r.timestamp).getTime()
       })),
       ...(data.food_details || []).map(r => ({ 
         type: 'food', 
         label: `${r.food_type} ($${r.estimated_price})`,
         time: formatTime(r.timestamp),
-        user_agent: r.user_agent || 'Desconocido',
+        user_agent: formatUserAgent(r.user_agent),
         sortKey: new Date(r.timestamp).getTime()
       })),
       ...(data.salida_details || []).map(r => ({ 
         type: 'salida', 
         label: `Salida (${formatDuration(r.duration_seconds)})`,
         time: formatTime(r.timestamp),
-        user_agent: r.user_agent || 'Desconocido',
+        user_agent: formatUserAgent(r.user_agent),
         sortKey: new Date(r.timestamp).getTime()
       }))
     ].sort((a, b) => b.sortKey - a.sortKey);

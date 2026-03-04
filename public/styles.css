@@ -429,6 +429,38 @@ body {
   max-height: 180px;
 }
 
+@media (max-width: 600px) {
+  .chart-card canvas {
+    max-height: 140px;
+  }
+  
+  .chart-card h3 {
+    font-size: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .stat-card,
+  .chart-card {
+    padding: 0.6rem;
+  }
+  
+  .summary-grid {
+    gap: 0.3rem;
+  }
+  
+  .summary-item {
+    padding: 0.3rem 0.4rem;
+  }
+  
+  .summary-value {
+    font-size: 0.95rem;
+  }
+  
+  .summary-label {
+    font-size: 0.65rem;
+  }
+}
+
 .chart-card.full-width {
   grid-column: 1 / -1;
 }
@@ -658,6 +690,27 @@ body {
 .detail-time {
   color: var(--text-muted);
   font-size: 0.72rem;
+}
+
+@media (max-width: 600px) {
+  .stats-details {
+    max-height: 150px;
+  }
+  
+  .detail-item {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.5rem;
+    gap: 0.4rem;
+  }
+  
+  .detail-device {
+    max-width: 100px;
+    font-size: 0.6rem;
+  }
+  
+  .detail-time {
+    font-size: 0.65rem;
+  }
 }
 
 @keyframes fade-in {
