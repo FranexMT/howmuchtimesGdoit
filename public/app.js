@@ -88,6 +88,18 @@ function updateSalidaTimer() {
   document.getElementById('salida-timer').textContent = `${mins}:${secs}`;
 }
 
+function showToast(message, type = 'info') {
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add('fade-out');
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
 function initCharts() {
   const commonOptions = {
     responsive: true,
@@ -405,9 +417,11 @@ async function saveBathroom(duration) {
     });
     loadStats();
     updateCharts(currentPeriod);
+    showToast('Baño registrado', 'success');
   } catch (error) {
     if (error.message !== 'unauthorized') {
       console.error('Error:', error);
+      showToast('Error al registrar baño', 'error');
     }
   }
 }
@@ -449,9 +463,11 @@ async function saveSalida(duration) {
     });
     loadStats();
     updateCharts(currentPeriod);
+    showToast('Salida registrada', 'success');
   } catch (error) {
     if (error.message !== 'unauthorized') {
       console.error('Error:', error);
+      showToast('Error al registrar salida', 'error');
     }
   }
 }
@@ -472,7 +488,7 @@ async function saveFood() {
   const price = parseFloat(document.getElementById('food-price').value) || 0;
 
   if (!foodType) {
-    alert('Por favor ingresa el tipo de comida');
+    showToast('Por favor ingresa el tipo de comida', 'error');
     return;
   }
 
@@ -488,9 +504,11 @@ async function saveFood() {
     closeFoodModal();
     loadStats();
     updateCharts(currentPeriod);
+    showToast('Comida registrada', 'success');
   } catch (error) {
     if (error.message !== 'unauthorized') {
       console.error('Error:', error);
+      showToast('Error al registrar comida', 'error');
     }
   }
 }
@@ -705,9 +723,10 @@ async function loadRecords() {
 async function deleteRecord(id, type) {
   try {
     await apiFetchJson(`${API_URL}/api/${type}/${id}`, { method: 'DELETE' });
+    showToast('Registro eliminado', 'success');
   } catch (error) {
     console.error('Error deleting record:', error);
-    alert('Error al eliminar registro');
+    showToast('Error al eliminar registro', 'error');
   }
 }
 
@@ -763,21 +782,22 @@ async function saveEditedRecord() {
     }
   }
 
-  try {
-    await apiFetchJson(`${API_URL}/api/${type}/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    closeEditModal();
-    loadRecords();
-    loadStats();
-    updateCharts(currentPeriod);
-  } catch (error) {
-    console.error('Error saving edit:', error);
-    alert('Error al guardar cambios');
-  }
-}
+   try {
+     await apiFetchJson(`${API_URL}/api/${type}/${id}`, {
+       method: 'PUT',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify(data)
+     });
+     closeEditModal();
+     loadRecords();
+     loadStats();
+     updateCharts(currentPeriod);
+     showToast('Cambios guardados', 'success');
+   } catch (error) {
+     console.error('Error saving edit:', error);
+     showToast('Error al guardar cambios', 'error');
+   }
+ }
 
 function openInjectModal() {
   const modal = document.getElementById('inject-modal');
@@ -824,7 +844,7 @@ function toggleInjectFields() {
 async function saveInjectedRecord() {
   const type = document.getElementById('inject-type').value;
   if (!type) {
-    alert('Por favor selecciona un tipo');
+    showToast('Por favor selecciona un tipo', 'error');
     return;
   }
 
@@ -888,9 +908,10 @@ async function saveInjectedRecord() {
     loadRecords();
     loadStats();
     updateCharts(currentPeriod);
+    showToast('Registro inyectado correctamente', 'success');
   } catch (error) {
     console.error('Error saving inject:', error);
-    alert('Error al inyectar registro');
+    showToast('Error al inyectar registro', 'error');
   }
 }
 
